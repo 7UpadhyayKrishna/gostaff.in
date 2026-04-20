@@ -37,12 +37,38 @@ export async function main() {
     },
   });
 
-  await prisma.site.create({
+  const site = await prisma.site.create({
     data: {
       name: "Main Demo Site",
       location: "Dubai",
       supervisorUserId: supervisor.id,
     },
+  });
+
+  await prisma.shift.createMany({
+    data: [
+      {
+        demoSessionId: session.id,
+        siteId: site.id,
+        name: "Morning",
+        startTime: "06:00",
+        endTime: "14:00",
+      },
+      {
+        demoSessionId: session.id,
+        siteId: site.id,
+        name: "Evening",
+        startTime: "14:00",
+        endTime: "22:00",
+      },
+      {
+        demoSessionId: session.id,
+        siteId: site.id,
+        name: "Night",
+        startTime: "22:00",
+        endTime: "06:00",
+      },
+    ],
   });
 }
 

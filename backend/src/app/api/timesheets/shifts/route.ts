@@ -1,7 +1,7 @@
 import { apiError } from "@/src/lib/api-error";
 import { prisma } from "@/src/lib/prisma";
 import { forbiddenResponse, requireRoles, requireSessionContext, unauthorizedResponse } from "@/src/lib/session";
-import { isTimesheetDateOnOrAfterJoining } from "@/src/lib/timesheet-join-date";
+import { contractJoinDateIsoUtc, isTimesheetDateOnOrAfterJoining } from "@/src/lib/timesheet-join-date";
 import type { AttendanceStatus, ShiftPattern } from "@prisma/client";
 
 type LineInput = {
@@ -81,10 +81,12 @@ export async function GET(req: Request) {
     const lines = employees.map((emp) => {
       const existing = itemByEmployee.get(emp.id);
       const isEligible = isTimesheetDateOnOrAfterJoining(date, emp.contractStart);
+      const joiningDate = contractJoinDateIsoUtc(emp.contractStart);
       return {
         employeeId: emp.id,
         employeeCode: emp.employeeId,
         employeeName: emp.fullName,
+        joiningDate,
         attendanceStatus: existing?.attendanceStatus ?? null,
         hoursWorked: existing?.hoursWorked ?? defaultHours,
         overtime: existing?.overtime ?? 0,
