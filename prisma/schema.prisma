@@ -1,0 +1,538 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model DemoSession {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  users     User[]
+  employees Employee[]
+  payrollRuns PayrollRun[]
+  siteTimesheetSubmissions SiteTimesheetSubmission[]
+  payrollRunAuditLogs PayrollRunAuditLog[]
+  shifts Shift[]
+  shiftTimesheetSubmissions ShiftTimesheetSubmission[]
+  payrollEntries PayrollEntry[]
+  dailyPayrollLedgers DailyPayrollLedger[]
+}
+
+model User {
+  id            String      @id @default(cuid())
+  name          String
+  email         String      @unique
+  role          UserRole    @default(HR_ADMIN)
+  passwordHash  String
+  demoSessionId String
+  demoSession   DemoSession @relation(fields: [demoSessionId], references: [id], onDelete: Cascade)
+  approvals     Approval[]
+  supervisedSites Site[]    @relation("SiteSupervisor")
+  validatedTimesheets Timesheet[] @relation("TimesheetValidator")
+  validatedSiteSubmissions SiteTimesheetSubmission[] @relation("SubmissionValidator")
+  approvedShiftTimesheetSubmissions ShiftTimesheetSubmission[] @relation("ShiftSubmissionApprover")
+  approvedPayrollEntries PayrollEntry[] @relation("PayrollEntryApprover")
+  approvedPayrollRuns PayrollRun[] @relation("PayrollApprover")
+  payrollRunAuditLogs PayrollRunAuditLog[] @relation("PayrollAuditActor")
+  createdAt     DateTime    @default(now())
+
+  @@index([demoSessionId, role])
+}
+
+enum UserRole {
+  OWNER
+  OPS_DIRECTOR
+  HR_ADMIN
+  SITE_SUPERVISOR
+}
+
+enum TimesheetStatus {
+  DRAFT
+  SUBMITTED
+  VALIDATED
+  LOCKED
+  REJECTED
+}
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+enum JobTitle {
+  SECURITY_GUARD
+  CLEANER
+  SUPERVISOR
+  DRIVER
+}
+enum Department {
+  OPERATIONS
+  FACILITIES
+}
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+}
+enum ContractType {
+  LIMITED
+  UNLIMITED
+}
+enum EmployeeStatus {
+  DRAFT
+  PENDING_APPROVAL
+  CONDITIONALLY_APPROVED
+  ACTIVE
+  REJECTED
+  ON_EXIT
+  EXITED
+}
+enum DocumentType {
+  PASSPORT
+  EMIRATES_ID
+  RESIDENCE_VISA
+  LABOUR_CARD
+  OFFER_LETTER
+  SIGNED_CONTRACT
+  MEDICAL_FITNESS
+  BACKGROUND_CHECK
+}
+enum DocumentStatus {
+  PENDING
+  UPLOADED
+  EXPIRED
+  EXPIRING_SOON
+  CLEARED
+  FAILED
+}
+enum VisaType {
+  EMPLOYMENT
+  VISIT
+  FREELANCE
+}
+enum ShiftPattern {
+  MORNING
+  EVENING
+  NIGHT
+  ROTATING
+}
+enum UniformSize {
+  S
+  M
+  L
+  XL
+  XXL
+}
+enum PaymentMethod {
+  WPS_BANK
+  CASH
+}
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CONDITIONALLY_APPROVED
+}
+enum ExitReason {
+  RESIGNATION
+  TERMINATION
+  CONTRACT_END
+  RETIREMENT
+}
+enum ExitRaisedBy {
+  EMPLOYEE
+  HR
+}
+enum ExitStatus {
+  INITIATED
+  CLEARANCE_PENDING
+  SETTLEMENT_PENDING
+  COMPLETED
+}
+
+enum PayrollRunStatus {
+  COLLECTING
+  VALIDATING
+  READY_FOR_APPROVAL
+  APPROVED
+  REJECTED
+  EXPORTED
+  CLOSED
+}
+
+enum ShiftSubmissionStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+}
+
+enum PayrollEntrySource {
+  TIMESHEET
+}
+
+model Employee {
+  id              String          @id @default(cuid())
+  employeeId      String          @unique
+  demoSessionId   String
+  demoSession     DemoSession     @relation(fields: [demoSessionId], references: [id], onDelete: Cascade)
+  firstName       String
+  middleName      String?
+  lastName        String
+  fullName        String
+  nickName        String?
+  nationality     String
+  dateOfBirth     DateTime
+  gender          Gender
+  mobile          String
+  email           String?
+  emergencyName   String
+  emergencyPhone  String
+  jobTitle        JobTitle
+  department      Department
+  reportingTo     String?
+  employmentType  EmploymentType
+  contractType    ContractType
+  contractStart   DateTime
+  contractEnd     DateTime?
+  probationMonths Int             @default(6)
+  noticeDays      Int             @default(30)
+  status          EmployeeStatus  @default(PENDING_APPROVAL)
+  onboardingStage Int             @default(1)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  documents       Document[]
+  siteAssignment  SiteAssignment?
+  payrollConfig   PayrollConfig?
+  approval        Approval?
+  exitRecord      ExitRecord?
+  timesheets      Timesheet[]
+  shiftTimesheetLineItems ShiftTimesheetLineItem[]
+  payrollEntries  PayrollEntry[]
+  dailyPayrollLedgers DailyPayrollLedger[]
+  payslips        Payslip[]
+
+  @@index([demoSessionId, status])
+  @@index([demoSessionId, createdAt(sort: Desc)])
+}
+
+model Document {
+  id             String         @id @default(cuid())
+  employeeId     String
+  employee       Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  type           DocumentType
+  documentNumber String?
+  issueDate      DateTime?
+  expiryDate     DateTime?
+  visaType       VisaType?
+  mohreRef       String?
+   uploadedAt     DateTime?
+  fileUrl        String?
+  /** When set without a file, HR chose to upload later; remark is shown to Ops. */
+  uploadDeferredRemark String?
+  status         DocumentStatus @default(PENDING)
+
+  @@index([employeeId, expiryDate])
+}
+
+model Site {
+  id               String           @id @default(cuid())
+  name             String
+  location         String
+  supervisorUserId String?
+  supervisor       User?            @relation("SiteSupervisor", fields: [supervisorUserId], references: [id], onDelete: SetNull)
+  assignments      SiteAssignment[]
+  timesheetSubmissions SiteTimesheetSubmission[]
+  shiftTimesheetSubmissions ShiftTimesheetSubmission[]
+  shifts Shift[]
+}
+
+model SiteAssignment {
+  id           String       @id @default(cuid())
+  employeeId   String       @unique
+  employee     Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  siteId       String
+  site         Site         @relation(fields: [siteId], references: [id])
+  shiftPattern ShiftPattern
+  shiftStart   DateTime
+  uniformSize  UniformSize?
+  badgeNumber  String?
+  assignedAt   DateTime     @default(now())
+}
+
+model Shift {
+  id            String   @id @default(cuid())
+  demoSessionId String
+  demoSession   DemoSession @relation(fields: [demoSessionId], references: [id], onDelete: Cascade)
+  siteId        String
+  site          Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  name          String
+  startTime     String
+  endTime       String
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  submissions   ShiftTimesheetSubmission[]
+  payrollEntries PayrollEntry[]
+
+  @@index([demoSessionId, siteId])
+  @@unique([demoSessionId, siteId, name])
+}
+
+model SiteTimesheetSubmission {
+  id               String   @id @default(cuid())
+  demoSessionId    String
+  demoSession      DemoSession @relation(fields: [demoSessionId], references: [id], onDelete: Cascade)
+  siteId           String
+  site             Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  period           String
+  status           TimesheetStatus @default(DRAFT)
+  submittedAt      DateTime?
+  validatedAt      DateTime?
+  lockedAt         DateTime?
+  validatedByUserId String?
+  validatedByUser  User?    @relation("SubmissionValidator", fields: [validatedByUserId], references: [id], onDelete: SetNull)
+  note             String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([demoSessionId, siteId, period])
+  @@index([demoSessionId, period, status])
+}
+
+model ShiftTimesheetSubmission {
+  id                String   @id @default(cuid())
+  demoSessionId     String
+  demoSession       DemoSession @relation(fields: [demoSessionId], references: [id], onDelete: Cascade)
+  siteId            String
+  site              Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  shiftId           String
+  shift             Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  date              DateTime
+  status            ShiftSubmissionStatus @default(DRAFT)
+  submittedAt       DateTime?
+  approvedAt        DateTime?
+  rejectedAt        DateTime?
+  approvedByUserId  String?
+  approvedByUser    User?    @relation("ShiftSubmissionApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  rejectionRemark   String?
+  lockedAt          DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  lineItems         ShiftTimesheetLineItem[]
+  payrollEntries    PayrollEntry[]
+
+  @@unique([demoSessionId, siteId, shiftId, date])
+  @@index([demoSessionId, date, status])
+}
+
+model ShiftTimesheetLineItem {
+  id                 String   @id @default(cuid())
+  submissionId       String
+  submission         ShiftTimesheetSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  employeeId         String
+  employee           Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  attendanceStatus   AttendanceStatus
+  hoursWorked        Float
+  overtime           Float    @default(0)
+  manualHoursOverride Boolean @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([submissionId, employeeId])
+  @@index([employeeId, submissionId])
+}
+
+model PayrollEntry {
+  id                   String   @id @default(cuid())
+  demoSessionId        String
+  demoSession          DemoSession @relation(fields: [demoSessionId], references: [id], onDelete: Cascade)
+  employeeId           String
+  employee             Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date                 DateTime
+  shiftId              String
+  shift                Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  shiftSubmissionId    String
+  shiftSubmission      ShiftTimesheetSubmission @relation(fields: [shiftSubmissionId], references: [id], onDelete: Cascade)
+  hoursWorked          Float
+  overtime             Float    @default(0)
+  source               PayrollEntrySource @default(TIMESHEET)
+  approvedAt           DateTime
+  approvedByUserId     String?
+  approvedByUser       User?    @relation("PayrollEntryApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([shiftSubmissionId, employeeId])
+  @@index([demoSessionId, employeeId, date])
+  @@index([demoSessionId, date])
+}
+
+model DailyPayrollLedger {
+  id            String   @id @default(cuid())
+  demoSessionId String
+  demoSession   DemoSession @relation(fields: [demoSessionId], references: [id], onDelete: Cascade)
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date          DateTime
+  totalHours    Float
+  overtime      Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([demoSessionId, employeeId, date])
+  @@index([demoSessionId, date])
+}
+
+model PayrollConfig {
+  id                 String        @id @default(cuid())
+  employeeId         String        @unique
+  employee           Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  basicSalary        Float
+  housingAllowance   Float         @default(0)
+  transportAllowance Float         @default(0)
+  otherAllowances    Json?
+  paymentMethod      PaymentMethod @default(WPS_BANK)
+  bankName           String?
+  iban               String?
+  paymentFrequency   String        @default("MONTHLY")
+  firstPayrollMonth  String
+  payrollGrade       String?
+  gratuityStart      DateTime
+  leaveEntitlement   Int           @default(30)
+  advanceRecovery    Float         @default(0)
+  accommodationDeduction Float     @default(0)
+  loanEmi            Float         @default(0)
+}
+
+model Approval {
+  id          String         @id @default(cuid())
+  employeeId  String         @unique
+  employee    Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  managerId   String
+  manager     User           @relation(fields: [managerId], references: [id], onDelete: Cascade)
+  status      ApprovalStatus @default(PENDING)
+  note        String?
+  submittedAt DateTime       @default(now())
+  decidedAt   DateTime?
+
+  @@index([managerId, submittedAt(sort: Desc)])
+}
+
+model ExitRecord {
+  id                 String       @id @default(cuid())
+  employeeId         String       @unique
+  employee           Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  exitReason         ExitReason
+  raisedBy           ExitRaisedBy
+  lastWorkingDay     DateTime
+  initiatedAt        DateTime     @default(now())
+  completedAt        DateTime?
+  accessCardReturned Boolean      @default(false)
+  uniformReturned    Boolean      @default(false)
+  assetListCleared   Boolean      @default(false)
+  itAccessRevoked    Boolean      @default(false)
+  financeCleared     Boolean      @default(false)
+  hrInterviewDone    Boolean      @default(false)
+  gratuityDays       Float?
+  gratuityAmount     Float?
+  unusedLeaveDays    Float?
+  leaveEncashment    Float?
+  finalMonthSalary   Float?
+  otherDeductions    Float?
+  totalSettlement    Float?
+  exitStatus         ExitStatus   @default(INITIATED)
+}
+
+model Timesheet {
+  id          String   @id @default(cuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  weekStart   DateTime
+  hoursWorked Float
+  overtimeHrs Float    @default(0)
+  status      TimesheetStatus @default(DRAFT)
+  period      String
+  siteIdSnapshot String?
+  submittedAt DateTime?
+  validatedAt DateTime?
+  lockedAt    DateTime?
+  validatedByUserId String?
+  validatedByUser User? @relation("TimesheetValidator", fields: [validatedByUserId], references: [id], onDelete: SetNull)
+  rejectionNote String?
+  /// Per-day regular and OT hours (Mon–Sun) for the week starting `weekStart`
+  dailyBreakdown Json?
+
+  @@index([employeeId, weekStart(sort: Desc)])
+  @@index([employeeId, status])
+  @@index([period, status])
+}
+
+model Payslip {
+  payrollRunId String?
+  id          String   @id @default(cuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  payrollRun  PayrollRun? @relation(fields: [payrollRunId], references: [id])
+  month       String
+  basicSalary Float
+  allowances  Float
+  grossSalary Float
+  deductions  Float    @default(0)
+  netSalary   Float
+  wpsStatus   String   @default("PENDING")
+  generatedAt DateTime @default(now())
+}
+
+
+model PayrollRun {
+  id            String           @id @default(cuid())
+  demoSessionId String
+  demoSession   DemoSession      @relation(fields: [demoSessionId], references: [id], onDelete: Cascade)
+  month         String
+  status        PayrollRunStatus @default(COLLECTING)
+  totalEmployees Int             @default(0)
+  totalGross    Float            @default(0)
+  totalNet      Float            @default(0)
+  submissionStatusBySite Json?
+  anomalySummary Json?
+  submittedAt   DateTime?
+  approvedAt    DateTime?
+  approvedByUserId String?
+  approvedByUser User? @relation("PayrollApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  rejectedNote  String?
+  exportedAt    DateTime?
+  closedAt      DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  payslips      Payslip[]
+  auditLogs     PayrollRunAuditLog[]
+
+  @@unique([demoSessionId, month])
+}
+
+model PayrollRunAuditLog {
+  id            String           @id @default(cuid())
+  demoSessionId String
+  demoSession   DemoSession      @relation(fields: [demoSessionId], references: [id], onDelete: Cascade)
+  payrollRunId  String
+  payrollRun    PayrollRun       @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+  actorUserId   String
+  actorUser     User             @relation("PayrollAuditActor", fields: [actorUserId], references: [id], onDelete: Cascade)
+  action        String
+  fromStatus    PayrollRunStatus?
+  toStatus      PayrollRunStatus
+  metadata      Json?
+  createdAt     DateTime         @default(now())
+
+  @@index([demoSessionId, createdAt(sort: Desc)])
+  @@index([payrollRunId, createdAt(sort: Desc)])
+}

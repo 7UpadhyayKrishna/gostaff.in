@@ -1,0 +1,2 @@
+-- Placeholder migration to restore missing file.
+-- Intentionally empty.
