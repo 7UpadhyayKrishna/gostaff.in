@@ -40,8 +40,12 @@ export function CompliancePageClient() {
             </tr>
           </thead>
           <tbody>
-            {items.map((item) => (
-              <tr key={item.id} className="border-t">
+            {items.map((item, index) => {
+              const rowKey =
+                item.id ??
+                `${item.employee?.employeeId ?? "employee"}-${item.type ?? "summary"}-${item.expiryDate ?? "no-expiry"}-${index}`;
+              return (
+              <tr key={rowKey} className="border-t">
                 <td className="p-2">
                   <div className="font-medium">{item.employee?.fullName ?? "Employee"}</div>
                   <div className="text-xs text-slate-500">{item.employee?.employeeId ?? ""}</div>
@@ -67,7 +71,8 @@ export function CompliancePageClient() {
                   </>
                 )}
               </tr>
-            ))}
+            );
+            })}
           </tbody>
         </table>
       </div>
