@@ -99,6 +99,11 @@ export async function GET(req: Request) {
         select: {
           employeeId: true,
           month: true,
+          allowances: true,
+          deductions: true,
+          grossSalary: true,
+          netSalary: true,
+          generatedAt: true,
         },
       }),
     ]);
@@ -139,10 +144,30 @@ export async function GET(req: Request) {
       unbilledByEmployee.set(ts.employeeId, list);
     }
     const billedMonthsByEmployee = new Map<string, Set<string>>();
+    const payslipByEmployeeMonth = new Map<
+      string,
+      Map<string, { allowances: number; deductions: number; grossSalary: number; netSalary: number; generatedAt: Date }>
+    >();
     for (const slip of payslips) {
       const months = billedMonthsByEmployee.get(slip.employeeId) ?? new Set<string>();
       months.add(slip.month);
       billedMonthsByEmployee.set(slip.employeeId, months);
+
+      let byMonth = payslipByEmployeeMonth.get(slip.employeeId);
+      if (!byMonth) {
+        byMonth = new Map();
+        payslipByEmployeeMonth.set(slip.employeeId, byMonth);
+      }
+      const existing = byMonth.get(slip.month);
+      if (!existing || existing.generatedAt < slip.generatedAt) {
+        byMonth.set(slip.month, {
+          allowances: slip.allowances,
+          deductions: slip.deductions,
+          grossSalary: slip.grossSalary,
+          netSalary: slip.netSalary,
+          generatedAt: slip.generatedAt,
+        });
+      }
     }
 
     const rows = employees.map((emp) => {
@@ -150,6 +175,7 @@ export async function GET(req: Request) {
       const periodMap = byEmployeePeriod.get(emp.id);
       const approvedPeriodMap = approvedByEmployeePeriod.get(emp.id);
       const billedMonths = billedMonthsByEmployee.get(emp.id) ?? new Set<string>();
+      const payslipMonths = payslipByEmployeeMonth.get(emp.id) ?? new Map();
       const byMonth: Array<{
         period: string;
         grossSalary: number;
@@ -184,17 +210,22 @@ export async function GET(req: Request) {
           continue;
         }
         const pay = computeMonthlyPayFromTimesheets(cfg, source);
+        const payslip = payslipMonths.get(period);
+        const allowances = payslip?.allowances ?? pay.allowances;
+        const deductions = payslip?.deductions ?? pay.deductions;
+        const grossSalary = payslip?.grossSalary ?? pay.grossSalary;
+        const netSalary = payslip?.netSalary ?? pay.netSalary;
         const billed26 = computeBilledGross26DayFromTimesheets(cfg, source);
         byMonth.push({
           period,
-          grossSalary: pay.grossSalary,
-          netSalary: pay.netSalary,
-          allowances: pay.allowances,
-          deductions: pay.deductions,
+          grossSalary,
+          netSalary,
+          allowances,
+          deductions,
           billedGross26: billed26.billedGross,
         });
-        totalGross += pay.grossSalary;
-        totalNet += pay.netSalary;
+        totalGross += grossSalary;
+        totalNet += netSalary;
         totalBilledGross26 += billed26.billedGross;
       }
 

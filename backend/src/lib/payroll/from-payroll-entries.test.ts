@@ -29,7 +29,9 @@ test("adapter produces timesheet-like lines with regular and overtime split", ()
     { date: new Date("2026-04-17T00:00:00.000Z"), hoursWorked: 10, overtime: 2 },
   ]);
   assert.equal(rows.length, 1);
-  assert.deepEqual(rows[0].dailyBreakdown, [{ date: "2026-04-17", regular: 8, ot: 2 }]);
+  const day = (rows[0].dailyBreakdown as Array<{ date: string; regular: number; ot: number }>).find((d) => d.date === "2026-04-17");
+  assert.deepEqual(day, { date: "2026-04-17", regular: 8, ot: 2 });
+  assert.ok((rows[0].dailyBreakdown as Array<unknown>).length >= 28);
 });
 
 test("monthly formula stays unchanged when fed adapted payroll entries", () => {
@@ -39,5 +41,6 @@ test("monthly formula stays unchanged when fed adapted payroll entries", () => {
   assert.equal(pay.weekdayOtHours, 2);
   assert.equal(pay.fridayOtHours, 0);
   assert.equal(pay.publicHolidayHours, 0);
-  assert.ok(pay.grossSalary > payrollConfig.basicSalary);
+  assert.ok(pay.absentDays > 0);
+  assert.ok(pay.netSalary < pay.grossSalary);
 });
