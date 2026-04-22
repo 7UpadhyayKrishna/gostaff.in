@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY backend/package.json backend/package.json
 RUN npm ci
-
+RUN npx prisma generate
 # copy only required code
 COPY backend ./backend
 COPY prisma ./prisma
