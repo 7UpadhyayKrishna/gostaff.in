@@ -19,7 +19,7 @@ RUN npx prisma generate
 # Copy rest of code
 COPY backend ./backend
 COPY backend/tsconfig.json ./backend/tsconfig.json
-
+ENV AWS_REGION=us-east-1
 # Build backend
 RUN npm run build --workspace backend
 
