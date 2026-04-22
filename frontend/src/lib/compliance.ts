@@ -1,4 +1,12 @@
-import type { DocumentType } from "@prisma/client";
+export type DocumentType =
+  | "PASSPORT"
+  | "EMIRATES_ID"
+  | "RESIDENCE_VISA"
+  | "LABOUR_CARD"
+  | "OFFER_LETTER"
+  | "SIGNED_CONTRACT"
+  | "MEDICAL_FITNESS"
+  | "BACKGROUND_CHECK";
 import { DOCUMENT_EXPIRY_THRESHOLDS } from "@/src/constants/uae-compliance";
 
 export type AlertLevel = "RED" | "YELLOW" | "GREEN";
