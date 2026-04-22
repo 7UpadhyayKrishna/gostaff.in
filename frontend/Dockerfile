@@ -12,7 +12,7 @@ COPY frontend frontend
 COPY backend backend
 COPY prisma prisma
 COPY prisma.config.ts prisma.config.ts
-COPY tsconfig.json tsconfig.json
+COPY frontend/tsconfig.json frontend/tsconfig.json
 
 RUN npm run build --workspace frontend
 
