@@ -8,7 +8,7 @@ import { canAccessPage } from "@/src/lib/permissions";
 export default async function Page() {
   const session = await getServerSession(authOptions);
   const role = getRoleFromSession(session);
-  if (!canAccessPage("/sites", role)) {
+  if (!role || !canAccessPage("/sites", role)) {
     return <AccessDenied message="You do not have access to site management." />;
   }
   return <SitesPageClient role={role} />;

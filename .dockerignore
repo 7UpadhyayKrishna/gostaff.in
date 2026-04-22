@@ -4,6 +4,12 @@
 node_modules
 **/node_modules
 **/.next
+**/.next/**
+backend/.next
+frontend/.next
+backend/.DS_Store
+frontend/.DS_Store
+**/*.tsbuildinfo
 **/coverage
 **/.turbo
 **/.cache
@@ -14,3 +20,4 @@ node_modules
 docker/.env.prod
 README.md
 .cursor
+go-staff-main-1

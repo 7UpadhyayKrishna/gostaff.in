@@ -38,7 +38,7 @@ export async function GET() {
           orderBy: { expiryDate: "asc" },
         }),
     );
-    const decorated = docs.map((d) => ({
+    const decorated = docs.map((d: (typeof docs)[number]) => ({
       ...d,
       alertLevel: d.expiryDate ? getDocumentAlertLevel(d.expiryDate, d.type) : "YELLOW",
     }));
