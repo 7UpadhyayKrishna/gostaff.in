@@ -2,19 +2,20 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# install deps
 COPY package.json package-lock.json ./
-COPY frontend/package.json frontend/package.json
 COPY backend/package.json backend/package.json
-
 RUN npm ci
 
-COPY frontend frontend
-COPY backend backend
-COPY prisma prisma
-COPY prisma.config.ts prisma.config.ts
-COPY tsconfig.json tsconfig.json
+# copy only required code
+COPY backend ./backend
+COPY prisma ./prisma
+COPY prisma.config.ts .
+COPY backend/tsconfig.json ./backend/tsconfig.json
 
+# build backend
 RUN npm run build --workspace backend
+
 
 FROM node:20-alpine AS runner
 
@@ -23,13 +24,13 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3001
 
-COPY --from=builder /app/package.json /app/package-lock.json ./
-COPY --from=builder /app/frontend/package.json frontend/package.json
-COPY --from=builder /app/backend/package.json backend/package.json
-COPY --from=builder /app/node_modules node_modules
-COPY --from=builder /app/backend backend
-COPY --from=builder /app/prisma prisma
-COPY --from=builder /app/prisma.config.ts prisma.config.ts
+# copy only runtime files
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/package-lock.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/backend ./backend
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/prisma.config.ts ./
 
 EXPOSE 3001
 
