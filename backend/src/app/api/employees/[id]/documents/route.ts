@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { prisma } from "@/src/lib/prisma";
 import { forbiddenResponse, requireRoles, requireSessionContext, unauthorizedResponse } from "@/src/lib/session";
 import { uploadEmployeeDocumentToS3 } from "@/src/lib/s3";
