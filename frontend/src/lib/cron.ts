@@ -11,6 +11,6 @@ export function startDemoCronJob() {
       select: { id: true },
     });
     if (!expiredSessions.length) return;
-    await prisma.demoSession.deleteMany({ where: { id: { in: expiredSessions.map((s) => s.id) } } });
+    await prisma.demoSession.deleteMany({ where: { id: { in: expiredSessions.map((s: { id: string }) => s.id) } } });
   });
 }
