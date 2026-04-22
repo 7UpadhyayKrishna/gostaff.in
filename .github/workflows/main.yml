@@ -21,7 +21,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 3. Build & Push Backend
+      # 3. Build & Push Backend (✅ FIXED)
       - name: Build & Push Backend
         run: |
           docker build \
@@ -30,6 +30,7 @@ jobs:
             --build-arg AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} \
             -t 0980943898/gostaff-demo:backend \
             -f backend/Dockerfile .
+
           docker push 0980943898/gostaff-demo:backend
 
       # 4. Build & Push Frontend
