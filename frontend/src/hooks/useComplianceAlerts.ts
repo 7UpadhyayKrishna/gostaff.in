@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 
 export type ComplianceAlert = {
-  id: string;
+  id?: string;
   type: string;
   status: string;
   alertLevel: "RED" | "YELLOW" | "GREEN";
@@ -10,7 +10,7 @@ export type ComplianceAlert = {
   overallStatus?: "COMPLIANT" | "EXPIRING_SOON" | "OVERDUE";
   nearestExpiryDate?: string | null;
   daysToExpiry?: number | null;
-  employee?: { fullName?: string; employeeId?: string };
+  employee?: { id?: string; fullName?: string; employeeId?: string };
 };
 
 export function useComplianceAlerts() {

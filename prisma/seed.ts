@@ -82,53 +82,13 @@ export async function main() {
     },
   });
 
-  const existingSite = await prisma.site.findFirst({ where: { name: "Main Demo Site" } });
-  if (existingSite) {
-    await prisma.site.update({
-      where: { id: existingSite.id },
-      data: { location: "Dubai", supervisorUserId: supervisor.id },
-    });
-  } else {
-    await prisma.site.create({
-      data: {
-        name: "Main Demo Site",
-        location: "Dubai",
-        supervisorUserId: supervisor.id,
-      },
-    });
-  }
-
-  const site = await prisma.site.findFirst({ where: { name: "Main Demo Site" } });
-  if (site) {
-    const defaultShifts = [
-      { name: "Morning", startTime: "08:00", endTime: "16:00" },
-      { name: "Evening", startTime: "16:00", endTime: "00:00" },
-    ];
-
-    for (const shift of defaultShifts) {
-      await prisma.shift.upsert({
-        where: {
-          demoSessionId_siteId_name: {
-            demoSessionId: session.id,
-            siteId: site.id,
-            name: shift.name,
-          },
-        },
-        update: {
-          startTime: shift.startTime,
-          endTime: shift.endTime,
-          isActive: true,
-        },
-        create: {
-          demoSessionId: session.id,
-          siteId: site.id,
-          name: shift.name,
-          startTime: shift.startTime,
-          endTime: shift.endTime,
-        },
-      });
-    }
-  }
+  await prisma.site.create({
+    data: {
+      name: "Main Demo Site",
+      location: "Dubai",
+      supervisorUserId: supervisor.id,
+    },
+  });
 }
 
 main().finally(async () => prisma.$disconnect());

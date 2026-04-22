@@ -14,6 +14,7 @@ type ShiftLine = {
   employeeId: string;
   employeeCode: string;
   employeeName: string;
+  joiningDate: string;
   attendanceStatus: "PRESENT" | "ABSENT" | null;
   hoursWorked: number;
   overtime: number;
@@ -192,6 +193,9 @@ export function ShiftTimesheetPanel({ embed = false }: { embed?: boolean }) {
                   <td className="p-2">
                     <div className="font-medium">{line.employeeName}</div>
                     <div className="text-xs text-slate-500">{line.employeeCode}</div>
+                    {!line.isEligible ? (
+                      <div className="text-xs text-amber-700">Not editable until joining date: {line.joiningDate}</div>
+                    ) : null}
                   </td>
                   <td className="p-2">
                     <select

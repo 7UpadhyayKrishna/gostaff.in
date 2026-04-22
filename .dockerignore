@@ -1,0 +1,16 @@
+.git
+.gitignore
+.next
+node_modules
+**/node_modules
+**/.next
+**/coverage
+**/.turbo
+**/.cache
+*.log
+.env
+.env.*
+!.env.example
+docker/.env.prod
+README.md
+.cursor
