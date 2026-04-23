@@ -28,14 +28,49 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const session = await requireSessionContext();
-    requireRoles(session, ["HR_ADMIN"], "Only HR can create sites");
+    requireRoles(session, ["OPS_DIRECTOR"], "Only Operation can create sites");
     const body = (await req.json()) as { name?: string; location?: string };
 
     if (!body.name || !body.location) return apiError("Site name and location are required", 400);
+    const siteName = body.name.trim();
+    const siteLocation = body.location.trim();
 
-    const site = await prisma.site.create({
-      data: { name: body.name.trim(), location: body.location.trim() },
-      include: { supervisor: { select: { id: true, name: true, email: true } }, _count: { select: { assignments: true } } },
+    const site = await prisma.$transaction(async (tx) => {
+      const createdSite = await tx.site.create({
+        data: { name: siteName, location: siteLocation },
+        include: {
+          supervisor: { select: { id: true, name: true, email: true } },
+          _count: { select: { assignments: true } },
+        },
+      });
+
+      await tx.shift.createMany({
+        data: [
+          {
+            demoSessionId: session.demoSessionId,
+            siteId: createdSite.id,
+            name: "MORNING",
+            startTime: "06:00",
+            endTime: "14:00",
+          },
+          {
+            demoSessionId: session.demoSessionId,
+            siteId: createdSite.id,
+            name: "EVENING",
+            startTime: "14:00",
+            endTime: "22:00",
+          },
+          {
+            demoSessionId: session.demoSessionId,
+            siteId: createdSite.id,
+            name: "NIGHT",
+            startTime: "22:00",
+            endTime: "06:00",
+          },
+        ],
+      });
+
+      return createdSite;
     });
     return Response.json(site, { status: 201 });
   } catch (error) {

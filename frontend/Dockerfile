@@ -6,7 +6,8 @@ COPY package.json package-lock.json ./
 COPY frontend/package.json frontend/package.json
 COPY backend/package.json backend/package.json
 
-RUN npm ci
+RUN npm ci --include=optional \
+  && npm install --no-save lightningcss-linux-x64-musl
 
 COPY frontend frontend
 COPY backend backend

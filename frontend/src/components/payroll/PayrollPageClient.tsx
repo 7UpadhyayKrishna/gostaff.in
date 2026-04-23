@@ -13,6 +13,12 @@ type PayrollRun = {
   totalEmployees: number;
   totalGross: number;
   totalNet: number;
+  auditLogs?: Array<{
+    id: string;
+    action: string;
+    createdAt: string;
+    actorUser?: { name?: string; email?: string };
+  }>;
 };
 
 export function PayrollPageClient() {
@@ -62,7 +68,7 @@ export function PayrollPageClient() {
         <StatCard label="Closed" value={runs.filter((run) => run.status === "CLOSED").length} />
       </div>
 
-      {role === "HR_ADMIN" ? (
+      {role === "OPS_DIRECTOR" ? (
         <div className="flex items-center gap-2">
           <input className="rounded border p-2" value={month} onChange={(e) => setMonth(e.target.value)} />
           <button className="rounded bg-slate-900 px-3 py-2 text-white" onClick={createRun}>

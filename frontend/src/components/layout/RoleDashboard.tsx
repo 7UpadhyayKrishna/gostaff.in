@@ -20,13 +20,20 @@ type Overview = {
   supervisorSubmissionOverdue?: number;
 };
 
-type Employee = { id: string; fullName: string; employeeId: string; status: string };
+type Employee = {
+  id: string;
+  fullName: string;
+  employeeId: string;
+  status: string;
+  siteAssignment?: { site?: { id?: string } | null } | null;
+};
 type Approval = { id: string; status: string; employee?: { fullName?: string } };
 type Timesheet = { id: string; status: string; employee?: { fullName?: string }; overtimeHrs?: number };
 type ExitRecord = { id: string; exitStatus: string; employee?: { fullName?: string } };
 type PayrollRun = { id: string; month: string; status: string; totalEmployees: number };
 type ActivityRow = { id: string; type: string; subject: string; status: string; cta: string; href: string };
 type QuickAction = { href: string; title: string; desc: string };
+type SupervisorSite = { id: string; name: string; location: string };
 
 function statusClass(status: string) {
   if (status.includes("APPROVED") || status.includes("ACTIVE") || status.includes("SENT")) {
@@ -59,6 +66,7 @@ export function RoleDashboard({ role }: { role: AppRole }) {
   const [timesheets, setTimesheets] = useState<Timesheet[]>([]);
   const [exits, setExits] = useState<ExitRecord[]>([]);
   const [runs, setRuns] = useState<PayrollRun[]>([]);
+  const [supervisorSites, setSupervisorSites] = useState<SupervisorSite[]>([]);
 
   useEffect(() => {
     fetch("/api/dashboard/overview")
@@ -84,6 +92,13 @@ export function RoleDashboard({ role }: { role: AppRole }) {
       .then((r) => r.json())
       .then((payload) => setEmployees(Array.isArray(payload) ? payload : []))
       .catch(() => {});
+
+    if (role === ROLES.SITE_SUPERVISOR) {
+      fetch("/api/sites")
+        .then((r) => r.json())
+        .then((payload) => setSupervisorSites(Array.isArray(payload) ? payload : []))
+        .catch(() => {});
+    }
 
     if (role === ROLES.OPS_DIRECTOR || role === ROLES.OWNER || role === ROLES.HR_ADMIN) {
       fetch("/api/approvals")
@@ -358,6 +373,14 @@ export function RoleDashboard({ role }: { role: AppRole }) {
     timesheets,
   ]);
 
+  const supervisorSiteRows = useMemo(() => {
+    if (role !== ROLES.SITE_SUPERVISOR) return [];
+    return supervisorSites.map((site) => ({
+      site,
+      employees: employees.filter((employee) => employee.siteAssignment?.site?.id === site.id),
+    }));
+  }, [employees, role, supervisorSites]);
+
   return (
     <div className="space-y-4">
       <PageHeader title={roleTitle} subtitle="Track operations, act on queue items, and monitor role-specific alerts." />
@@ -458,6 +481,28 @@ export function RoleDashboard({ role }: { role: AppRole }) {
               ))}
             </div>
           </Panel>
+          {role === ROLES.SITE_SUPERVISOR ? (
+            <Panel title="My sites and employees">
+              {supervisorSiteRows.length === 0 ? (
+                <p className="text-xs text-slate-500">No sites are assigned to you yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {supervisorSiteRows.map(({ site, employees: siteEmployees }) => (
+                    <div key={site.id} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                      <p className="text-sm font-semibold text-slate-900">{site.name}</p>
+                      <p className="text-[11px] text-slate-500">{site.location}</p>
+                      <p className="mt-1 text-xs font-medium text-slate-700">{siteEmployees.length} employee(s)</p>
+                      {siteEmployees.length > 0 ? (
+                        <div className="mt-1 text-[11px] text-slate-600">
+                          {siteEmployees.map((employee) => employee.fullName).join(", ")}
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Panel>
+          ) : null}
         </div>
       </div>
     </div>

@@ -88,6 +88,7 @@ export async function GET(req: Request) {
           date: true,
           hoursWorked: true,
           overtime: true,
+          approvedAt: true,
         },
         orderBy: [{ employeeId: "asc" }, { date: "asc" }],
       }),
@@ -122,7 +123,7 @@ export async function GET(req: Request) {
 
     const approvedByEmployeePeriod = new Map<
       string,
-      Map<string, Array<{ date: Date; hoursWorked: number; overtime: number }>>
+      Map<string, Array<{ date: Date; hoursWorked: number; overtime: number; approvedAt: Date }>>
     >();
     for (const row of approvedEntries) {
       const period = row.date.toISOString().slice(0, 7);
@@ -133,7 +134,12 @@ export async function GET(req: Request) {
         approvedByEmployeePeriod.set(row.employeeId, empMap);
       }
       const list = empMap.get(period) ?? [];
-      list.push({ date: row.date, hoursWorked: row.hoursWorked, overtime: row.overtime });
+      list.push({
+        date: row.date,
+        hoursWorked: row.hoursWorked,
+        overtime: row.overtime,
+        approvedAt: row.approvedAt,
+      });
       empMap.set(period, list);
     }
 
@@ -188,6 +194,7 @@ export async function GET(req: Request) {
       let totalGross = 0;
       let totalNet = 0;
       let totalBilledGross26 = 0;
+      let totalBilledHours = 0;
       let approvedUnbilledHours = 0;
       let approvedUnbilledGross26 = 0;
 
@@ -201,8 +208,24 @@ export async function GET(req: Request) {
 
       for (const period of [...periods].sort()) {
         const approved = approvedPeriodMap?.get(period) ?? [];
-        const hasGeneratedPayroll = billedMonths.has(period);
-        const source = approved.length > 0 ? toTimesheetLikeInputsFromPayrollEntries(approved) : (periodMap?.get(period) ?? []);
+        const payslip = payslipMonths.get(period);
+        const latestApprovedAt =
+          approved.length > 0
+            ? approved.reduce((latest, row) => (row.approvedAt > latest ? row.approvedAt : latest), approved[0].approvedAt)
+            : null;
+        const hasGeneratedPayroll =
+          billedMonths.has(period) &&
+          (!!payslip && (latestApprovedAt === null || payslip.generatedAt >= latestApprovedAt));
+        const source =
+          approved.length > 0
+            ? toTimesheetLikeInputsFromPayrollEntries(
+                approved.map((row) => ({
+                  date: row.date,
+                  hoursWorked: row.hoursWorked,
+                  overtime: row.overtime,
+                })),
+              )
+            : (periodMap?.get(period) ?? []);
         if (source.length === 0) continue;
         if (approved.length > 0 && !hasGeneratedPayroll) {
           approvedUnbilledHours += classifyTimesheetDayHours(source).totalWorkedHours;
@@ -210,7 +233,7 @@ export async function GET(req: Request) {
           continue;
         }
         const pay = computeMonthlyPayFromTimesheets(cfg, source);
-        const payslip = payslipMonths.get(period);
+        const billedHours = classifyTimesheetDayHours(source).totalWorkedHours;
         const allowances = payslip?.allowances ?? pay.allowances;
         const deductions = payslip?.deductions ?? pay.deductions;
         const grossSalary = payslip?.grossSalary ?? pay.grossSalary;
@@ -227,6 +250,7 @@ export async function GET(req: Request) {
         totalGross += grossSalary;
         totalNet += netSalary;
         totalBilledGross26 += billed26.billedGross;
+        totalBilledHours += billedHours;
       }
 
       const unbilledList = unbilledByEmployee.get(emp.id) ?? [];
@@ -246,6 +270,7 @@ export async function GET(req: Request) {
         byMonth,
         totalGross,
         totalNet,
+        totalBilledHours,
         totalBilledGross26,
         unbilledHours,
         unbilledGross26,

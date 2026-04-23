@@ -24,12 +24,13 @@ type EmployeeRow = {
   byMonth: MonthRow[];
   totalGross: number;
   totalNet: number;
+  totalBilledHours: number;
   totalBilledGross26: number;
   unbilledHours: number;
   unbilledGross26: number;
 };
 
-type SortKey = "name" | "basic" | "unbilledHrs" | "billed26" | "totalGross" | "totalNet";
+type SortKey = "name" | "basic" | "unbilledHrs" | "billedHrs" | "billed26" | "totalGross" | "totalNet";
 
 function formatAed(n: number) {
   return new Intl.NumberFormat("en-AE", { style: "currency", currency: "AED", maximumFractionDigits: 2 }).format(n);
@@ -91,6 +92,8 @@ export function CompensationPageClient() {
           return (a.unbilledHours - b.unbilledHours) * dir;
         case "billed26":
           return (a.totalBilledGross26 - b.totalBilledGross26) * dir;
+        case "billedHrs":
+          return (a.totalBilledHours - b.totalBilledHours) * dir;
         case "totalGross":
           return (a.totalGross - b.totalGross) * dir;
         case "totalNet":
@@ -200,7 +203,7 @@ export function CompensationPageClient() {
           <p className="text-sm text-slate-500">Loading compensation…</p>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-slate-200">
-            <table className="w-full min-w-[1040px] text-left text-sm">
+            <table className="w-full min-w-[1120px] text-left text-sm">
               <thead className="border-b border-slate-200 bg-slate-50/90">
                 <tr className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   <th className="px-3 py-3">
@@ -228,6 +231,15 @@ export function CompensationPageClient() {
                     Unbilled
                     <br />
                     (26-day est.)
+                  </th>
+                  <th className="px-3 py-3 text-right">
+                    <button
+                      type="button"
+                      className="font-semibold text-slate-600 hover:text-slate-900"
+                      onClick={() => toggleSort("billedHrs")}
+                    >
+                      Billed hrs{sortHint("billedHrs")}
+                    </button>
                   </th>
                   <th className="px-3 py-3 text-right">
                     <button type="button" className="font-semibold text-slate-600 hover:text-slate-900" onClick={() => toggleSort("billed26")}>
@@ -265,6 +277,7 @@ export function CompensationPageClient() {
                         <td className="px-3 py-3 text-right tabular-nums text-slate-700">{formatAed(e.transportAllowance)}</td>
                         <td className="px-3 py-3 text-right tabular-nums font-medium text-amber-950">{formatHours(e.unbilledHours)}</td>
                         <td className="px-3 py-3 text-right tabular-nums font-medium text-amber-900">{formatAed(e.unbilledGross26)}</td>
+                        <td className="px-3 py-3 text-right font-semibold tabular-nums text-slate-900">{formatHours(e.totalBilledHours)}</td>
                         <td className="px-3 py-3 text-right font-semibold tabular-nums text-slate-900">{formatAed(e.totalBilledGross26)}</td>
                         <td className="px-3 py-3 text-right tabular-nums text-slate-700">{formatAed(e.totalGross)}</td>
                         <td className="px-3 py-3 text-right font-semibold tabular-nums text-emerald-800">{formatAed(e.totalNet)}</td>
@@ -295,7 +308,7 @@ export function CompensationPageClient() {
                       </tr>
                       {open && e.byMonth.length > 0 ? (
                         <tr className="border-b border-slate-100 bg-slate-50/90">
-                          <td colSpan={11} className="px-3 py-4">
+                          <td colSpan={12} className="px-3 py-4">
                             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-600">Per-month (locked timesheets)</p>
                             <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
                               <table className="w-full text-xs">

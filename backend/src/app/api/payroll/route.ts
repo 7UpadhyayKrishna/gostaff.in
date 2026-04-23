@@ -11,6 +11,7 @@ export async function GET() {
     requireRoles(session, ["HR_ADMIN", "OPS_DIRECTOR", "OWNER"], "Only HR, Operation, or Owner can access payroll");
     const runs = await prisma.payrollRun.findMany({
       where: { demoSessionId: session.demoSessionId },
+      // Keep payload intentionally small for table rendering.
       select: {
         id: true,
         month: true,
@@ -19,6 +20,18 @@ export async function GET() {
         totalGross: true,
         totalNet: true,
         createdAt: true,
+        auditLogs: {
+          select: {
+            id: true,
+            action: true,
+            fromStatus: true,
+            toStatus: true,
+            createdAt: true,
+            actorUser: { select: { name: true, email: true } },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -33,7 +46,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const session = await requireSessionContext();
-    requireRoles(session, ["HR_ADMIN"], "Only HR can create payroll runs");
+    requireRoles(session, ["OPS_DIRECTOR"], "Only Operation can create payroll runs");
     const body = (await req.json()) as { month?: string };
     const month = body.month ?? new Date().toISOString().slice(0, 7);
     const periodStart = new Date(`${month}-01T00:00:00.000Z`);
@@ -83,18 +96,23 @@ export async function POST(req: Request) {
       submittedAt: subMap.get(site.id)?.submittedAt ?? null,
     }));
     const blockedSites = siteStatus.filter((s) => s.status !== "LOCKED" && s.assignedEmployees > 0);
+    const existingRun = await prisma.payrollRun.findUnique({
+      where: { demoSessionId_month: { demoSessionId: session.demoSessionId, month } },
+      select: { id: true, status: true },
+    });
+    const nextStatus = blockedSites.length ? "VALIDATING" : "COLLECTING";
 
     const run = await prisma.payrollRun.upsert({
       where: { demoSessionId_month: { demoSessionId: session.demoSessionId, month } },
       update: {
-        status: blockedSites.length ? "VALIDATING" : "COLLECTING",
+        status: nextStatus,
         submissionStatusBySite: siteStatus as any,
         anomalySummary: { blockedSites: blockedSites.map((s) => s.siteName), blockedCount: blockedSites.length } as any,
       },
       create: {
         demoSessionId: session.demoSessionId,
         month,
-        status: blockedSites.length ? "VALIDATING" : "COLLECTING",
+        status: nextStatus,
         submissionStatusBySite: siteStatus as any,
         anomalySummary: { blockedSites: blockedSites.map((s) => s.siteName), blockedCount: blockedSites.length } as any,
       },
@@ -103,10 +121,10 @@ export async function POST(req: Request) {
       demoSessionId: session.demoSessionId,
       payrollRunId: run.id,
       actorUserId: session.userId,
-      action: "CREATE_OR_RECALCULATE_RUN",
-      fromStatus: null,
-      toStatus: blockedSites.length ? "VALIDATING" : "COLLECTING",
-      metadata: { month },
+      action: existingRun ? "RECALCULATE_RUN" : "CREATE_RUN",
+      fromStatus: existingRun?.status ?? null,
+      toStatus: nextStatus,
+      metadata: { month, mode: existingRun ? "RECALCULATE" : "CREATE" },
     });
 
     await prisma.payslip.deleteMany({ where: { payrollRunId: run.id } });
@@ -148,7 +166,7 @@ export async function POST(req: Request) {
           payrollRunId: run.id,
           employeeId: employee.id,
           month,
-          basicSalary: cfg.basicSalary,
+          basicSalary: pay.basicSalary,
           allowances: pay.allowances,
           grossSalary: pay.grossSalary,
           deductions: pay.deductions,

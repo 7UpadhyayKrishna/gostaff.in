@@ -28,21 +28,20 @@ export async function GET(_: Request, { params }: { params: Promise<{ runId: str
       where: { id: runId },
       data: { status: nextStatus, exportedAt: new Date() },
     });
-    if (nextStatus !== run.status) {
-      await logPayrollRunAudit({
-        demoSessionId: session.demoSessionId,
-        payrollRunId: run.id,
-        actorUserId: session.userId,
-        action: "EXPORT_PAYSLIPS",
-        fromStatus: run.status,
-        toStatus: nextStatus,
-      });
-    }
+    await logPayrollRunAudit({
+      demoSessionId: session.demoSessionId,
+      payrollRunId: run.id,
+      actorUserId: session.userId,
+      action: "EXPORT_PAYSLIPS",
+      fromStatus: run.status,
+      toStatus: nextStatus,
+      metadata: { rows: run.payslips.length },
+    });
 
     return Response.json({
       runId: run.id,
       month: run.month,
-      status: run.status,
+      status: nextStatus,
       payslips: run.payslips.map((p) => ({
         employeeId: p.employee?.employeeId ?? "",
         employeeName: p.employee?.fullName ?? "",

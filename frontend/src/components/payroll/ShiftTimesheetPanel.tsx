@@ -38,6 +38,7 @@ function toHours(start: string, end: string) {
 }
 
 export function ShiftTimesheetPanel({ embed = false }: { embed?: boolean }) {
+  const [sites, setSites] = useState<Site[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [selectedSiteId, setSelectedSiteId] = useState("");
   const [selectedShiftId, setSelectedShiftId] = useState("");
@@ -56,6 +57,7 @@ export function ShiftTimesheetPanel({ embed = false }: { embed?: boolean }) {
     const payload = await res.json();
     if (!res.ok) throw new Error(payload?.error ?? "Unable to load sites");
     const list = (Array.isArray(payload) ? payload : []) as Site[];
+    setSites(list);
     if (!selectedSiteId && list.length > 0) setSelectedSiteId(list[0].id);
   }, [selectedSiteId]);
 
@@ -152,6 +154,23 @@ export function ShiftTimesheetPanel({ embed = false }: { embed?: boolean }) {
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
             />
+          </label>
+          <label className="block text-xs font-medium text-slate-600">
+            Site
+            <select
+              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
+              value={selectedSiteId}
+              onChange={(e) => {
+                setSelectedSiteId(e.target.value);
+                setSelectedShiftId("");
+              }}
+            >
+              {sites.map((site) => (
+                <option key={site.id} value={site.id}>
+                  {site.name}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="block text-xs font-medium text-slate-600">
             Shift

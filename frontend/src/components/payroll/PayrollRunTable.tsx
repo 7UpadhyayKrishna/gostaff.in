@@ -7,6 +7,12 @@ type PayrollRun = {
   totalEmployees: number;
   totalGross: number;
   totalNet: number;
+  auditLogs?: Array<{
+    id: string;
+    action: string;
+    createdAt: string;
+    actorUser?: { name?: string; email?: string };
+  }>;
 };
 
 export function PayrollRunTable({ runs }: { runs: PayrollRun[] }) {
@@ -28,6 +34,14 @@ export function PayrollRunTable({ runs }: { runs: PayrollRun[] }) {
     return "Ready";
   };
 
+  const lastAuditLabel = (run: PayrollRun) => {
+    const last = run.auditLogs?.[0];
+    if (!last) return "No audit yet";
+    const actor = last.actorUser?.name ?? last.actorUser?.email ?? "Unknown";
+    const at = new Date(last.createdAt).toLocaleString();
+    return `${last.action} by ${actor} on ${at}`;
+  };
+
   return (
     <div className="overflow-hidden rounded border">
       <table className="w-full text-sm">
@@ -39,6 +53,7 @@ export function PayrollRunTable({ runs }: { runs: PayrollRun[] }) {
             <th className="p-2 text-left">Gross</th>
             <th className="p-2 text-left">Net</th>
             <th className="p-2 text-left">Blocked Reason</th>
+            <th className="p-2 text-left">Last Audit</th>
             <th className="p-2 text-left">Action</th>
           </tr>
         </thead>
@@ -53,6 +68,7 @@ export function PayrollRunTable({ runs }: { runs: PayrollRun[] }) {
               <td className="p-2">AED {run.totalGross.toFixed(2)}</td>
               <td className="p-2">AED {run.totalNet.toFixed(2)}</td>
               <td className="p-2 text-xs text-slate-600">{blocker(run)}</td>
+              <td className="p-2 text-xs text-slate-600">{lastAuditLabel(run)}</td>
               <td className="p-2"><Link href={`/payroll/${run.id}`} className="text-blue-600">Open</Link></td>
             </tr>
           ))}

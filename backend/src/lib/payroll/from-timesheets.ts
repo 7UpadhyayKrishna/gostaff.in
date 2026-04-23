@@ -122,21 +122,24 @@ export function computeMonthlyPayFromTimesheets(
   const c = classifyTimesheetDayHours(timesheets);
 
   const absentDays = Math.max(0, (c.expectedRegularHours - c.weekdayRegular) / 8);
+  const regularHoursRatio = c.expectedRegularHours > 0 ? Math.min(1, c.weekdayRegular / c.expectedRegularHours) : 0;
+  const fixedAllowances = cfg.housingAllowance + cfg.transportAllowance;
+  const proratedAllowances = fixedAllowances * regularHoursRatio;
+  const payableBasicSalary = c.weekdayRegular * baseHourly;
   const weekdayOtPay = c.weekdayOt * baseHourly * 1.25;
   const fridayOtPay = c.fridayHours * baseHourly * 1.5;
   const publicHolidayPay = c.publicHolidayHours * baseHourly * 2;
-  const absenceDeduction = (cfg.basicSalary / 30) * absentDays;
   const advanceRecovery = cfg.advanceRecovery ?? 0;
   const accommodationDeduction = cfg.accommodationDeduction ?? 0;
   const loanEmi = cfg.loanEmi ?? 0;
 
-  const allowances = cfg.housingAllowance + cfg.transportAllowance + weekdayOtPay + fridayOtPay + publicHolidayPay;
-  const grossSalary = cfg.basicSalary + allowances;
-  const deductions = absenceDeduction + advanceRecovery + accommodationDeduction + loanEmi;
+  const allowances = proratedAllowances;
+  const grossSalary = payableBasicSalary + allowances + weekdayOtPay + fridayOtPay + publicHolidayPay;
+  const deductions = advanceRecovery + accommodationDeduction + loanEmi;
   const netSalary = grossSalary - deductions;
 
   return {
-    basicSalary: cfg.basicSalary,
+    basicSalary: payableBasicSalary,
     allowances,
     grossSalary,
     deductions,

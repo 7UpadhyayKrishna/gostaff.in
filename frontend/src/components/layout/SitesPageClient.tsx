@@ -180,10 +180,27 @@ export function SitesPageClient({ role }: { role: AppRole }) {
   async function assignSupervisor(siteId: string) {
     setStatus("");
     setError("");
+    const selectedSupervisorId = assignments[siteId] || "";
+    if (selectedSupervisorId) {
+      const existingSites = sites.filter(
+        (site) => site.id !== siteId && site.supervisorUserId === selectedSupervisorId,
+      );
+      if (existingSites.length > 0) {
+        const supervisorName =
+          supervisors.find((sup) => sup.id === selectedSupervisorId)?.name ??
+          existingSites[0]?.supervisor?.name ??
+          "This supervisor";
+        const assignedSiteNames = existingSites.map((site) => site.name).join(", ");
+        const shouldProceed = window.confirm(
+          `${supervisorName} is already assigned to: ${assignedSiteNames}. Do you still want to assign this supervisor to another site?`,
+        );
+        if (!shouldProceed) return;
+      }
+    }
     const response = await fetch(`/api/sites/${siteId}/supervisor`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ supervisorUserId: assignments[siteId] || null }),
+      body: JSON.stringify({ supervisorUserId: selectedSupervisorId || null }),
     });
     const payload = await response.json();
     if (!response.ok) {
