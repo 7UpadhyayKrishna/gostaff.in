@@ -2,12 +2,14 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+ENV NPM_CONFIG_INCLUDE=optional
+
 COPY package.json package-lock.json ./
 COPY frontend/package.json frontend/package.json
 COPY backend/package.json backend/package.json
 
 RUN npm ci --include=optional \
-  && npm install --no-save lightningcss-linux-x64-musl
+  && npm install --no-save @tailwindcss/oxide-linux-x64-musl
 
 COPY frontend frontend
 COPY backend backend
