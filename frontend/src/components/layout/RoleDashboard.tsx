@@ -276,7 +276,7 @@ export function RoleDashboard({ role }: { role: AppRole }) {
       return [
         { href: "/approvals", title: "Approve onboarding", desc: "Final decision on pending onboarding records." },
         { href: "/timesheets", title: "Review timesheets", desc: "Check overtime and site productivity." },
-        { href: "/sites", title: "Assign supervisors", desc: "Map supervisors to sites and control site ownership." },
+        { href: "/sites?action=add", title: "Add site", desc: "Create a new site and then assign supervisors and ownership." },
         {
           href: "/compensation",
           title: "Compensation accrual",

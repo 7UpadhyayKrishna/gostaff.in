@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { PageHeader } from "@/src/components/layout/PageHeader";
 import { StatCard } from "@/src/components/layout/StatCard";
 import { ROLES, type AppRole } from "@/src/lib/roles";
@@ -55,6 +56,7 @@ function formatDate(value: string | Date | null | undefined) {
 }
 
 export function SitesPageClient({ role }: { role: AppRole }) {
+  const searchParams = useSearchParams();
   const [rows, setRows] = useState<EmployeeRow[]>([]);
   const [sites, setSites] = useState<SiteRow[]>([]);
   const [supervisors, setSupervisors] = useState<Supervisor[]>([]);
@@ -70,7 +72,7 @@ export function SitesPageClient({ role }: { role: AppRole }) {
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
   const [showAddSite, setShowAddSite] = useState(false);
 
-  const canCreate = role === ROLES.HR_ADMIN;
+  const canCreate = role === ROLES.OPS_DIRECTOR;
   const canAssign = role === ROLES.OPS_DIRECTOR;
   const loadSupervisorsList = role === ROLES.OPS_DIRECTOR || role === ROLES.OWNER;
 
@@ -125,6 +127,13 @@ export function SitesPageClient({ role }: { role: AppRole }) {
   useEffect(() => {
     loadAll().catch((e) => setError(e instanceof Error ? e.message : "Unable to load site assignments"));
   }, [loadAll]);
+
+  useEffect(() => {
+    if (!canCreate) return;
+    if (searchParams.get("action") === "add") {
+      setShowAddSite(true);
+    }
+  }, [canCreate, searchParams]);
 
   const filteredSites = useMemo(() => {
     const q = siteFilter.trim().toLowerCase();
@@ -216,7 +225,7 @@ export function SitesPageClient({ role }: { role: AppRole }) {
       <PageHeader
         title="Sites"
         subtitle={
-          role === ROLES.HR_ADMIN
+          canCreate
             ? "Browse sites, review supervisors and rosters, and add new locations."
             : "Site coverage, supervisors, and assignment controls."
         }
