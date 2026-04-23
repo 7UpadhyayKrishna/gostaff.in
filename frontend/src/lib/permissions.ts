@@ -19,5 +19,6 @@ export const PAGE_ACCESS = {
 
 export function canAccessPage(path: keyof typeof PAGE_ACCESS, role: AppRole | undefined): boolean {
   if (!role) return false;
-  return PAGE_ACCESS[path].includes(role);
+  const allowedRoles: readonly AppRole[] = PAGE_ACCESS[path];
+  return allowedRoles.includes(role);
 }
