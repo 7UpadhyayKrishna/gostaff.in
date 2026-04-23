@@ -17,7 +17,8 @@ COPY prisma prisma
 COPY prisma.config.ts prisma.config.ts
 COPY frontend/tsconfig.json frontend/tsconfig.json
 
-RUN npm run build --workspace frontend
+RUN npx prisma generate \
+  && npm run build --workspace frontend
 
 FROM node:20-alpine AS runner
 
