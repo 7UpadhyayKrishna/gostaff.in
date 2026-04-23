@@ -1,22 +1,28 @@
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
-const region = process.env.AWS_REGION;
-const bucket = process.env.AWS_S3_BUCKET;
-const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-
 function requireEnv(value: string | undefined, key: string) {
   if (!value) throw new Error(`MISSING_ENV:${key}`);
   return value;
 }
 
-const s3 = new S3Client({
-  region: requireEnv(region, "AWS_REGION"),
-  credentials: {
-    accessKeyId: requireEnv(accessKeyId, "AWS_ACCESS_KEY_ID"),
-    secretAccessKey: requireEnv(secretAccessKey, "AWS_SECRET_ACCESS_KEY"),
-  },
-});
+function getAwsConfig() {
+  return {
+    region: requireEnv(process.env.AWS_REGION, "AWS_REGION"),
+    bucket: requireEnv(process.env.AWS_S3_BUCKET, "AWS_S3_BUCKET"),
+    accessKeyId: requireEnv(process.env.AWS_ACCESS_KEY_ID, "AWS_ACCESS_KEY_ID"),
+    secretAccessKey: requireEnv(process.env.AWS_SECRET_ACCESS_KEY, "AWS_SECRET_ACCESS_KEY"),
+  };
+}
+
+function getS3Client(config: { region: string; accessKeyId: string; secretAccessKey: string }) {
+  return new S3Client({
+    region: config.region,
+    credentials: {
+      accessKeyId: config.accessKeyId,
+      secretAccessKey: config.secretAccessKey,
+    },
+  });
+}
 
 function sanitizeSegment(segment: string) {
   return segment.replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -28,7 +34,9 @@ export async function uploadEmployeeDocumentToS3(args: {
   documentType: string;
   file: File;
 }) {
-  const targetBucket = requireEnv(bucket, "AWS_S3_BUCKET");
+  const awsConfig = getAwsConfig();
+  const s3 = getS3Client(awsConfig);
+  const targetBucket = awsConfig.bucket;
   const extension = args.file.name.includes(".") ? args.file.name.slice(args.file.name.lastIndexOf(".")) : "";
   const objectKey = [
     "hrms",
@@ -49,5 +57,5 @@ export async function uploadEmployeeDocumentToS3(args: {
     }),
   );
 
-  return `https://${targetBucket}.s3.${requireEnv(region, "AWS_REGION")}.amazonaws.com/${objectKey}`;
+  return `https://${targetBucket}.s3.${awsConfig.region}.amazonaws.com/${objectKey}`;
 }
