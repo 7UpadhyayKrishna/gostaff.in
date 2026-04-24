@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react";
 import { ShiftTimesheetPanel } from "@/src/components/payroll/ShiftTimesheetPanel";
 import { OpsShiftValidationQueue } from "@/src/components/payroll/OpsShiftValidationQueue";
 import { cn } from "@/src/lib/utils";
+import * as XLSX from "xlsx";
 
 type TimesheetRow = {
   id: string;
@@ -17,6 +18,15 @@ type TimesheetRow = {
   employee?: { id?: string; fullName?: string; employeeId?: string };
 };
 
+type TimesheetExportRow = {
+  employeeId: string;
+  employeeName: string;
+  weekStart: string;
+  hoursWorked: number;
+  overtimeHrs: number;
+  status: string;
+};
+
 function statusBadgeClass(status: string) {
   const s = status.toUpperCase();
   if (s === "LOCKED" || s === "VALIDATED") return "bg-emerald-100 text-emerald-900";
@@ -24,6 +34,17 @@ function statusBadgeClass(status: string) {
   if (s === "REJECTED") return "bg-rose-100 text-rose-900";
   if (s === "DRAFT") return "bg-amber-100 text-amber-950";
   return "bg-slate-100 text-slate-800";
+}
+
+function toTimesheetExportRows(rows: TimesheetRow[]): TimesheetExportRow[] {
+  return rows.map((row) => ({
+    employeeId: row.employee?.employeeId ?? "",
+    employeeName: row.employee?.fullName ?? "",
+    weekStart: new Date(row.weekStart).toISOString().slice(0, 10),
+    hoursWorked: row.hoursWorked,
+    overtimeHrs: row.overtimeHrs,
+    status: row.status,
+  }));
 }
 
 export function TimesheetsPageClient() {
@@ -120,6 +141,35 @@ export function TimesheetsPageClient() {
     }
   }
 
+  function exportTimesheetsCsv() {
+    if (filtered.length === 0) {
+      setError("No timesheet data available to export.");
+      return;
+    }
+    const exportRows = toTimesheetExportRows(filtered);
+    const sheet = XLSX.utils.json_to_sheet(exportRows);
+    const csv = XLSX.utils.sheet_to_csv(sheet);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `timesheets_${period}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportTimesheetsExcel() {
+    if (filtered.length === 0) {
+      setError("No timesheet data available to export.");
+      return;
+    }
+    const exportRows = toTimesheetExportRows(filtered);
+    const workbook = XLSX.utils.book_new();
+    const sheet = XLSX.utils.json_to_sheet(exportRows);
+    XLSX.utils.book_append_sheet(workbook, sheet, "Timesheets");
+    XLSX.writeFile(workbook, `timesheets_${period}.xlsx`);
+  }
+
   const isOps = role === "OPS_DIRECTOR";
   const primaryTitle = isOps ? "Shift validation" : "Shift timesheets";
   const primarySubtitle = isOps
@@ -191,6 +241,22 @@ export function TimesheetsPageClient() {
             <option value="ALL">All statuses</option>
             <option value="REJECTED">Rejected</option>
           </select>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              onClick={exportTimesheetsCsv}
+            >
+              Export CSV
+            </button>
+            <button
+              type="button"
+              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              onClick={exportTimesheetsExcel}
+            >
+              Export Excel
+            </button>
+          </div>
         </div>
       </div>
 

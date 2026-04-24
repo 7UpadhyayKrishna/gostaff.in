@@ -36,6 +36,17 @@ export const authOptions: NextAuthOptions = {
       (session.user as any).demoSessionId = token.demoSessionId;
       return session;
     },
+    async redirect({ url }) {
+      // Keep post-auth navigation on the current app origin (frontend),
+      // even when auth internals produce absolute callback URLs.
+      if (url.startsWith("/")) return url;
+      try {
+        const parsed = new URL(url);
+        return `${parsed.pathname}${parsed.search}${parsed.hash}` || "/dashboard";
+      } catch {
+        return "/dashboard";
+      }
+    },
   },
   pages: { signIn: "/login" },
 };

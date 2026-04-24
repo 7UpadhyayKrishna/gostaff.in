@@ -7,7 +7,8 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       {
-        source: "/api/:path*",
+        // Keep NextAuth routes on frontend app (do not proxy to backend).
+        source: "/api/:path((?!auth(?:/|$)).*)",
         destination: `${apiBaseUrl}/api/:path*`,
       },
     ];
