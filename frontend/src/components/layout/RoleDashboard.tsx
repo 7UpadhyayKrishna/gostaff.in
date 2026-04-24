@@ -87,6 +87,18 @@ function currentMonth() {
   return new Date().toISOString().slice(0, 7);
 }
 
+function buildRecentMonthLabels(count: number) {
+  const labels: string[] = [];
+  const now = new Date();
+  for (let i = count - 1; i >= 0; i -= 1) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    labels.push(d.toISOString().slice(0, 7));
+  }
+  return labels;
+}
+
+const OWNER_DUMMY_DATA_DEFAULT = true;
+
 function parseMonthValue(month: string) {
   const direct = new Date(month);
   if (!Number.isNaN(direct.getTime())) return direct.getTime();
@@ -110,16 +122,32 @@ function MiniTrendChart({ data }: { data: MetricPoint[] }) {
       return `${x},${y}`;
     })
     .join(" ");
+  const areaPoints = `${points} ${width},${height - 8} 0,${height - 8}`;
 
   return (
-    <div className="space-y-2">
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-40 w-full rounded-lg border border-slate-200 bg-slate-50 p-2">
-        <polyline fill="none" stroke="#0f172a" strokeWidth="3" points={points} />
+    <div className="space-y-3">
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-44 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-2">
+        <defs>
+          <linearGradient id="ownerTrendArea" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.26" />
+            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        <line x1="0" y1="28" x2={width} y2="28" stroke="#e2e8f0" strokeWidth="1" />
+        <line x1="0" y1="76" x2={width} y2="76" stroke="#e2e8f0" strokeWidth="1" />
+        <line x1="0" y1="124" x2={width} y2="124" stroke="#e2e8f0" strokeWidth="1" />
+        <polygon fill="url(#ownerTrendArea)" points={areaPoints} />
+        <polyline fill="none" stroke="#2563eb" strokeWidth="3" points={points} strokeLinejoin="round" strokeLinecap="round" />
+        {data.map((item, i) => {
+          const x = i * stepX;
+          const y = height - (item.value / max) * (height - 24) - 12;
+          return <circle key={item.label} cx={x} cy={y} r="3.5" fill="#1d4ed8" />;
+        })}
       </svg>
-      <div className="grid grid-cols-3 gap-1 text-[10px] text-slate-500 md:grid-cols-6">
+      <div className="grid grid-cols-2 gap-1.5 text-[10px] text-slate-500 md:grid-cols-6">
         {data.map((item) => (
-          <div key={item.label} className="rounded-md bg-slate-100 px-2 py-1 text-center">
-            <p className="truncate font-medium text-slate-700">{item.label}</p>
+          <div key={item.label} className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-center shadow-sm">
+            <p className="truncate font-semibold text-slate-700">{item.label}</p>
             <p>{formatCompact(item.value)}</p>
           </div>
         ))}
@@ -153,6 +181,103 @@ function HorizontalMetricBars({
               </div>
               <div className="h-2 rounded-full bg-slate-100">
                 <div className="h-2 rounded-full bg-slate-800" style={{ width: `${Math.max((item.value / max) * 100, 6)}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function OwnerMiniBarChart({
+  title,
+  subtitle,
+  items,
+  colorClass,
+}: {
+  title: string;
+  subtitle: string;
+  items: MetricPoint[];
+  colorClass: string;
+}) {
+  const max = Math.max(...items.map((item) => item.value), 1);
+  return (
+    <Panel title={title}>
+      <p className="mb-3 text-[11px] text-slate-500">{subtitle}</p>
+      {items.length === 0 ? (
+        <p className="text-xs text-slate-500">No records found.</p>
+      ) : (
+        <div className="space-y-2.5">
+          {items.map((item) => (
+            <div key={item.label} className="rounded-lg border border-slate-200 bg-slate-50/60 p-2">
+              <div className="mb-1 flex items-center justify-between text-[11px]">
+                <span className="truncate pr-2 font-medium text-slate-700">{item.label}</span>
+                <span className="rounded-md bg-white px-1.5 py-0.5 font-semibold text-slate-700">{item.value}</span>
+              </div>
+              <div className="h-2.5 rounded-full bg-slate-200/70">
+                <div className={`h-2.5 rounded-full ${colorClass}`} style={{ width: `${Math.max((item.value / max) * 100, 8)}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function OwnerDualSeriesChart({
+  title,
+  subtitle,
+  labels,
+  seriesA,
+  seriesB,
+  seriesALabel,
+  seriesBLabel,
+}: {
+  title: string;
+  subtitle: string;
+  labels: string[];
+  seriesA: number[];
+  seriesB: number[];
+  seriesALabel: string;
+  seriesBLabel: string;
+}) {
+  const safeLength = Math.min(labels.length, seriesA.length, seriesB.length);
+  const rows = labels.slice(0, safeLength).map((label, i) => ({ label, a: seriesA[i], b: seriesB[i] }));
+  const max = Math.max(...rows.flatMap((row) => [row.a, row.b]), 1);
+  return (
+    <Panel title={title}>
+      <p className="mb-3 text-[11px] text-slate-500">{subtitle}</p>
+      <div className="mb-2 flex items-center gap-3 text-[11px] text-slate-600">
+        <span className="inline-flex items-center gap-1">
+          <span className="h-2.5 w-2.5 rounded-full bg-indigo-600" />
+          {seriesALabel}
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="h-2.5 w-2.5 rounded-full bg-teal-500" />
+          {seriesBLabel}
+        </span>
+      </div>
+      {rows.length === 0 ? (
+        <p className="text-xs text-slate-500">No records found.</p>
+      ) : (
+        <div className="space-y-2">
+          {rows.map((row) => (
+            <div key={row.label} className="rounded-lg border border-slate-200 bg-slate-50/60 p-2">
+              <div className="mb-1 flex items-center justify-between text-[11px]">
+                <span className="font-medium text-slate-700">{row.label}</span>
+                <span className="text-slate-600">
+                  {row.a} / {row.b}
+                </span>
+              </div>
+              <div className="space-y-1">
+                <div className="h-2 rounded-full bg-slate-200/70">
+                  <div className="h-2 rounded-full bg-indigo-600" style={{ width: `${Math.max((row.a / max) * 100, 4)}%` }} />
+                </div>
+                <div className="h-2 rounded-full bg-slate-200/70">
+                  <div className="h-2 rounded-full bg-teal-500" style={{ width: `${Math.max((row.b / max) * 100, 4)}%` }} />
+                </div>
               </div>
             </div>
           ))}
@@ -528,6 +653,41 @@ export function RoleDashboard({ role }: { role: AppRole }) {
 
   const ownerAnalytics = useMemo(() => {
     if (role !== ROLES.OWNER) return null;
+    const hasEmptyOwnerData =
+      employees.length === 0 && approvals.length === 0 && timesheets.length === 0 && runs.length === 0 && ownerCompRows.length === 0;
+    const shouldUseDummyData = OWNER_DUMMY_DATA_DEFAULT || hasEmptyOwnerData;
+
+    const dummyMonths = buildRecentMonthLabels(ownerRangeMonths);
+    const dummySiteWiseHeadcount: MetricPoint[] = [
+      { label: "Dubai Marina", value: 38 },
+      { label: "JLT Tower A", value: 29 },
+      { label: "Business Bay", value: 24 },
+      { label: "Al Quoz Yard", value: 17 },
+      { label: "Unassigned", value: 6 },
+    ];
+    const dummyEmployeeStatus: MetricPoint[] = [
+      { label: "ACTIVE", value: 92 },
+      { label: "PENDING_APPROVAL", value: 18 },
+      { label: "DRAFT", value: 11 },
+      { label: "ON_EXIT", value: 4 },
+    ];
+    const dummyApprovalStatus: MetricPoint[] = [
+      { label: "PENDING", value: 16 },
+      { label: "APPROVED", value: 44 },
+      { label: "REJECTED", value: 5 },
+    ];
+    const dummyTimesheetStatus: MetricPoint[] = [
+      { label: "LOCKED", value: 51 },
+      { label: "SUBMITTED", value: 21 },
+      { label: "VALIDATED", value: 12 },
+      { label: "DRAFT", value: 10 },
+      { label: "REJECTED", value: 4 },
+    ];
+    const dummyPayrollRunsTrend = dummyMonths.map((label, index) => ({ label, value: [3, 4, 4, 5, 4, 6, 5, 6, 7, 6, 7, 8][index] ?? 5 }));
+    const dummyPayrollCoverageTrend = dummyMonths.map((label, index) => ({
+      label,
+      value: [120, 126, 130, 136, 141, 149, 152, 158, 163, 168, 174, 180][index] ?? 140,
+    }));
 
     const employeeStatusMap = new Map<string, number>();
     employees.forEach((employee) => {
@@ -578,50 +738,81 @@ export function RoleDashboard({ role }: { role: AppRole }) {
       siteHeadcountMap.set(siteLabel, (siteHeadcountMap.get(siteLabel) ?? 0) + 1);
     });
     const siteWiseHeadcount = metricMapToPoints(siteHeadcountMap, 8);
+    const displayEmployeeStatus = shouldUseDummyData ? dummyEmployeeStatus : metricMapToPoints(employeeStatusMap);
+    const displayApprovalStatus = shouldUseDummyData ? dummyApprovalStatus : metricMapToPoints(approvalStatusMap);
+    const displayTimesheetStatus = shouldUseDummyData ? dummyTimesheetStatus : metricMapToPoints(timesheetStatusMap);
+    const displayPayrollRunsTrend = shouldUseDummyData ? dummyPayrollRunsTrend : payrollRunsTrend;
+    const displayPayrollCoverageTrend = shouldUseDummyData ? dummyPayrollCoverageTrend : payrollCoverageTrend;
+    const displaySiteWiseHeadcount = shouldUseDummyData ? dummySiteWiseHeadcount : siteWiseHeadcount;
+    const displayPayoutDue = shouldUseDummyData ? 428750 : estimatedPayoutDue;
+    const displayDocsNotReceived = shouldUseDummyData ? 14 : docsNotReceived;
+    const displayTotalEmployees = shouldUseDummyData ? 125 : employees.length;
+    const displayPendingApprovals = shouldUseDummyData ? 16 : pendingApprovals;
+    const displayPendingTimesheets = shouldUseDummyData ? 10 : pendingTimesheets;
+    const displayPayrollEmployeeLines = shouldUseDummyData ? 874 : totalPayrollEmployees;
+    const displayApprovalCompletion =
+      shouldUseDummyData || approvals.length === 0 ? "74% complete" : `${Math.round(((approvals.length - pendingApprovals) / approvals.length) * 100)}% complete`;
+    const displayTimesheetCompletion =
+      shouldUseDummyData || timesheets.length === 0 ? "88% submitted" : `${Math.round(((timesheets.length - pendingTimesheets) / timesheets.length) * 100)}% submitted`;
+    const displayAvgCoverage = shouldUseDummyData ? "146 employees" : `${formatCompact(averageEmployeesPerRun)} employees`;
+    const displayOperationalLoad = shouldUseDummyData
+      ? [
+          { label: "Pending approvals", value: 16 },
+          { label: "Pending timesheets", value: 10 },
+          { label: "Exits in progress", value: 7 },
+          { label: "Doc gaps", value: 14 },
+        ]
+      : [
+          { label: "Pending approvals", value: pendingApprovals },
+          { label: "Pending timesheets", value: pendingTimesheets },
+          { label: "Exits in progress", value: overview.exitsInProgress },
+          { label: "Doc gaps", value: displayDocsNotReceived },
+        ];
+    const displayDualLabels = displayPayrollRunsTrend.map((item) => item.label);
+    const displayDualRuns = displayPayrollRunsTrend.map((item) => item.value);
+    const displayDualCoverage = displayPayrollCoverageTrend.map((item) => item.value);
 
     return {
       executiveStats: [
-        { label: "Total employees tracked", value: employees.length, hint: "All employee records in the system", tone: "success" as const },
-        { label: "Estimated payout due", value: formatAed(estimatedPayoutDue), hint: `Net payroll accrual through ${currentMonth()}`, tone: "default" as const },
-        { label: "Documents not received", value: docsNotReceived, hint: "Missing passport/Emirates ID or no docs on active profile", tone: "warning" as const },
-        { label: "Open approvals", value: pendingApprovals, hint: "Awaiting a decision from operations", tone: "warning" as const },
-        { label: "Pending timesheets", value: pendingTimesheets, hint: "Submission queue across sites", tone: "warning" as const },
-        { label: "Payroll employee lines", value: totalPayrollEmployees, hint: "Cumulative payroll coverage", tone: "default" as const },
+        { label: "Total employees tracked", value: displayTotalEmployees, hint: "All employee records in the system", tone: "success" as const },
+        { label: "Estimated payout due", value: formatAed(displayPayoutDue), hint: `Net payroll accrual through ${currentMonth()}`, tone: "default" as const },
+        { label: "Documents not received", value: displayDocsNotReceived, hint: "Missing passport/Emirates ID or no docs on active profile", tone: "warning" as const },
+        { label: "Open approvals", value: displayPendingApprovals, hint: "Awaiting a decision from operations", tone: "warning" as const },
+        { label: "Pending timesheets", value: displayPendingTimesheets, hint: "Submission queue across sites", tone: "warning" as const },
+        { label: "Payroll employee lines", value: displayPayrollEmployeeLines, hint: "Cumulative payroll coverage", tone: "default" as const },
       ],
-      employeeStatus: metricMapToPoints(employeeStatusMap),
-      approvalStatus: metricMapToPoints(approvalStatusMap),
-      timesheetStatus: metricMapToPoints(timesheetStatusMap),
-      payrollRunsTrend,
-      payrollCoverageTrend,
-      siteWiseHeadcount,
+      employeeStatus: displayEmployeeStatus,
+      approvalStatus: displayApprovalStatus,
+      timesheetStatus: displayTimesheetStatus,
+      payrollRunsTrend: displayPayrollRunsTrend,
+      payrollCoverageTrend: displayPayrollCoverageTrend,
+      siteWiseHeadcount: displaySiteWiseHeadcount,
       highlights: [
         {
           label: "Approval completion",
-          value:
-            approvals.length === 0
-              ? "N/A"
-              : `${Math.round(((approvals.length - pendingApprovals) / approvals.length) * 100)}% complete`,
+          value: displayApprovalCompletion,
         },
         {
           label: "Timesheet completion",
-          value:
-            timesheets.length === 0
-              ? "N/A"
-              : `${Math.round(((timesheets.length - pendingTimesheets) / timesheets.length) * 100)}% submitted`,
+          value: displayTimesheetCompletion,
         },
         {
           label: "Avg payroll coverage/run",
-          value: `${formatCompact(averageEmployeesPerRun)} employees`,
+          value: displayAvgCoverage,
         },
         {
           label: "Docs not received",
-          value: `${docsNotReceived}`,
+          value: `${displayDocsNotReceived}`,
         },
       ],
-      estimatedPayoutDue,
-      docsNotReceived,
+      estimatedPayoutDue: displayPayoutDue,
+      docsNotReceived: displayDocsNotReceived,
+      operationalLoad: displayOperationalLoad,
+      dualSeriesLabels: displayDualLabels,
+      dualSeriesRuns: displayDualRuns,
+      dualSeriesCoverage: displayDualCoverage,
     };
-  }, [approvals, employees, ownerCompRows, ownerRangeMonths, overview.missingOnboardingDocs, role, runs, timesheets]);
+  }, [approvals, employees, ownerCompRows, ownerRangeMonths, overview.exitsInProgress, overview.missingOnboardingDocs, role, runs, timesheets]);
 
   return (
     <div className="space-y-4">
@@ -694,6 +885,37 @@ export function RoleDashboard({ role }: { role: AppRole }) {
                 </div>
                 <MiniTrendChart data={ownerAnalytics.payrollCoverageTrend} />
               </div>
+            </div>
+            <div className="mt-3 grid gap-3 lg:grid-cols-2">
+              <OwnerMiniBarChart
+                title="Site wise people"
+                subtitle="Headcount distribution by site."
+                items={ownerAnalytics.siteWiseHeadcount}
+                colorClass="bg-sky-600"
+              />
+              <OwnerMiniBarChart
+                title="Timesheet stage distribution"
+                subtitle="Current status split for all timesheet records."
+                items={ownerAnalytics.timesheetStatus}
+                colorClass="bg-violet-600"
+              />
+            </div>
+            <div className="mt-3 grid gap-3 lg:grid-cols-2">
+              <OwnerMiniBarChart
+                title="Operational load"
+                subtitle="Current queue pressure across core workflows."
+                items={ownerAnalytics.operationalLoad}
+                colorClass="bg-rose-600"
+              />
+              <OwnerDualSeriesChart
+                title="Monthly runs vs coverage"
+                subtitle="Quick comparison of run count and covered employees."
+                labels={ownerAnalytics.dualSeriesLabels}
+                seriesA={ownerAnalytics.dualSeriesRuns}
+                seriesB={ownerAnalytics.dualSeriesCoverage}
+                seriesALabel="Runs"
+                seriesBLabel="Coverage"
+              />
             </div>
           </Panel>
           <div className="grid gap-3 lg:grid-cols-3">
